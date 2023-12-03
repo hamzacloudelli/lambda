@@ -1,0 +1,67 @@
+name: My CI/CD Pipeline
+
+# Trigger the workflow on push events
+on:
+  push:
+    branches: [ main ]
+
+# Define the jobs
+jobs:
+  # Build and test the Lambda function, and run Terraform commands
+  build_and_test:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1 # replace with your region
+    steps:
+      - uses: actions/checkout@v3
+
+      # Install Terraform
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v1
+
+      # Initialize Terraform
+      - name: Terraform Init
+        run: terraform init -backend-config="key=${{ env.AWS_ACCESS_KEY_ID }},secret=${{ env.AWS_SECRET_ACCESS_KEY }},region=${{ env.AWS_REGION }}"
+
+      # Apply Terraform changes with auto-approve
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      # Install Python dependencies
+      run: python3 -m pip install -r requirements.txt
+
+      # Run tests
+      run: python3 -m unittest tests.py
+
+      # Archive the function code
+      uses: actions/upload-artifact@v3
+        with:
+          name: lambda_code
+          path: |
+            lambda_function.py
+            requirements.txt
+
+  # Deploy the Lambda function
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: lambda_code
+      - name: Create a ZIP archive of the function code
+        run: zip -r lambda_code.zip lambda_code/*
+      - name: Deploy the Lambda function
+        uses: aws-actions/aws-lambda-deploy@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          function-name: my-lambda-function
+          zip-file: lambda_code.zip
+          create-function: true
+          # Additional AWS CLI options can be added here
+
+# Define the outputs
+outputs:
+  function_url: ${{ steps.deploy.outputs.function_url }}
