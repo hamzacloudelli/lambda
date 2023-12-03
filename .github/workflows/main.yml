@@ -1,58 +1,58 @@
 name: My CI/CD Pipeline
 
-# Trigger the workflow on push events
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
-# Define the jobs
 jobs:
-  # Build and test the Lambda function, and run Terraform commands
   build_and_test:
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: us-east-1 # replace with your region
+      AWS_REGION: us-east-1
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # Install Terraform
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v1
 
-      # Initialize Terraform
       - name: Terraform Init
-        run: terraform init -backend-config="key=${{ env.AWS_ACCESS_KEY_ID }},secret=${{ env.AWS_SECRET_ACCESS_KEY }},region=${{ env.AWS_REGION }}"
+        run: terraform init -backend-config="key=${AWS_ACCESS_KEY_ID},secret=${AWS_SECRET_ACCESS_KEY},region=${AWS_REGION}"
 
-      # Apply Terraform changes with auto-approve
       - name: Terraform Apply
         run: terraform apply -auto-approve
 
-      # Install Python dependencies
-      run: python3 -m pip install -r requirements.txt
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
 
-      # Run tests
-      run: python3 -m unittest tests.py
+      - name: Run tests
+        run: |
+          python3 -m unittest tests.py
 
-      # Archive the function code
-      uses: actions/upload-artifact@v3
+      - name: Archive the function code
+        uses: actions/upload-artifact@v3
         with:
           name: lambda_code
           path: |
             lambda_function.py
             requirements.txt
 
-  # Deploy the Lambda function
   deploy:
     runs-on: ubuntu-latest
     needs: build_and_test
     steps:
-      - uses: actions/download-artifact@v3
+      - name: Download artifact
+        uses: actions/download-artifact@v3
         with:
           name: lambda_code
+
       - name: Create a ZIP archive of the function code
         run: zip -r lambda_code.zip lambda_code/*
+
       - name: Deploy the Lambda function
         uses: aws-actions/aws-lambda-deploy@v1
         with:
@@ -64,4 +64,5 @@ jobs:
 
 # Define the outputs
 outputs:
-  function_url: ${{ steps.deploy.outputs.function_url }}
+  function_url: ${{ needs.deploy.outputs.function_url }}
+
