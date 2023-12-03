@@ -60,9 +60,3 @@ jobs:
           function-name: my-lambda-function
           zip-file: lambda_code.zip
           create-function: true
-          # Additional AWS CLI options can be added here
-
-# Define the outputs
-outputs:
-  function_url: ${{ needs.deploy.outputs.function_url }}
-
