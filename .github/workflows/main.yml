@@ -39,7 +39,6 @@ jobs:
           name: lambda_code
           path: |
             lambda_function.py
-            requirements.txt
 
   deploy:
     runs-on: ubuntu-latest
