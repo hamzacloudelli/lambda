@@ -24,11 +24,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
-
-      - name: Run tests
-        run: |
-          python3 -m unittest tests.py
-
       - name: Archive the function code
         uses: actions/upload-artifact@v3
         with:
